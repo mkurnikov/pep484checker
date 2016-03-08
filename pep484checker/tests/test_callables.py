@@ -74,15 +74,3 @@ class TestFunctionCheck(CheckerTestCase):
         def callback(s: str, i: int) -> None:
             pass
         self.assertCorrectType(callback, Callable[[str, int], None])
-# class TestMethodCheck(CheckerTestCase):
-#     def test_correct_type(self):
-#         class Foo():
-#             def callback(self, s: str, i: int) -> str:
-#                 pass
-#         self.assertCorrectType(Foo().callback, Callable[[str, int], str])
-
-    # def test_method_wrong_number_of_arguments(self):
-    #     class Foo():
-    #         def callback(self, s: str, i: int) -> str:
-    #             pass
-    #     self.assertIncorrectType(callback, Callable[[Foo, str], str])
