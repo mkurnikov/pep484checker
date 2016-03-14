@@ -37,7 +37,6 @@ class _CheckTypeMeta(ABCMeta):
         if not hasattr(cls, 'type_') or getattr(cls, 'type_') is None:
             raise ValueError('type_ class variable must be filled.')
 
-        # FIXME: why here not cls but cls.__qualname__
         _check_func_registry[cls.type_.__name__] = cls.__qualname__
         return cls
 
@@ -222,19 +221,20 @@ class CheckABCTypeMixin(object):
 
 
 class CheckMappingMixin(object):
-    def _check_mapping(self, mapping_, k_type, v_type):
+    def _check_mapping(self, mapping_, k_type: TypeVar, v_type: TypeVar):
         for k, v in mapping_.items():
             try:
                 _check_type_func(k, k_type)
             except TypeError as e:
                 return bad_match(k, k_type, 'Type of key {0} for mapping is incorrect. Expected {1}'
-                                 .format(k, k_type))
+                                 .format(k, k_type.__bound__))
             else:
                 try:
                     _check_type_func(v, v_type)
-                except TypeVar as e:
-                    return bad_match(v, v_type, 'Type of value {0} for key {1} for mapping '
-                                                'is incorrect. Expected {2}'.format(v, k, v_type))
+                except TypeError as e:
+                    return bad_match(v, v_type, 'Type of value `{0}` for key `{1}` for mapping '
+                                                'is incorrect. Expected `{2}`'
+                                     .format(v, k, v_type.__bound__))
         return good_match()
 
 from typing import Container, Sized, Iterable, Sequence, MutableSequence
@@ -242,6 +242,7 @@ from typing import AbstractSet, MutableSet
 from typing import Mapping, MutableMapping
 from typing import ByteString, Iterator
 from typing import AsyncIterable, AsyncIterator, Awaitable
+from typing import Generator
 
 
 class _CheckABCBase(_CheckTypeBase, CheckABCTypeMixin):
@@ -351,10 +352,48 @@ class CheckAsyncIterator(_CheckABCBase):
     type_ = AsyncIterator
 
 
+class CheckGenerator(_CheckABCBase):
+    type_ = Generator
 # ********************************************************
 # Python data structures (Dict, List, Set, FrozenSet, Generator)
 # ********************************************************
 
-from typing import Dict, Set, List, FrozenSet, Generator
+from typing import Dict, Set, List, FrozenSet
+class CheckDict(CheckMutableMapping):
+    type_ = Dict
+
+    def __call__(self, argument, hint):
+        if not isinstance(argument, dict):
+            return bad_match(argument, hint)
+
+        return super().__call__(argument, hint)
 
 
+class CheckList(CheckMutableSequence):
+    type_ = List
+
+    def __call__(self, argument, hint):
+        if not isinstance(argument, list):
+            return bad_match(argument, hint)
+
+        return super().__call__(argument, hint)
+
+
+class CheckSet(CheckMutableSet):
+    type_ = Set
+
+    def __call__(self, argument, hint):
+        if not isinstance(argument, set):
+            return bad_match(argument, hint)
+
+        return super().__call__(argument, hint)
+
+
+class CheckFrozenSet(CheckAbstractSet):
+    type_ = FrozenSet
+
+    def __call__(self, argument, hint):
+        if not isinstance(argument, frozenset):
+            return bad_match(argument, hint)
+
+        return super().__call__(argument, hint)
